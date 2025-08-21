@@ -1,0 +1,19 @@
+# Dependências mínimas para rodar CleanRL no Isaac Sim 4.5.0
+
+gymnasium==0.29.1
+cloudpickle==2.2.1
+rich<14
+tyro<0.9
+tensorboard<2.17
+tensorboard-data-server==0.6.1
+tensorboard-plugin-wit==1.8.1
+tqdm==4.65.0
+tenacity==8.2.3
+pygame==2.1.0
+huggingface-hub<0.12.0,>=0.11.1
+pygame==2.1.0
+moviepy==1.0.3
+gym==0.23.1
+
+# opcionais (se realmente usar)
+wandb==0.13.11

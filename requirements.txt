@@ -1,0 +1,36 @@
+# CleanRL + IsaacSim Multi-Robot RL Dependencies
+# Consolidação das dependências para o projeto
+
+# Core CleanRL dependencies
+gymnasium==0.29.1
+cloudpickle==2.2.1
+rich<14
+tyro<0.9
+tensorboard<2.17
+tensorboard-data-server==0.6.1
+tensorboard-plugin-wit==1.8.1
+tqdm==4.65.0
+tenacity==8.2.3
+
+# PyTorch (adjust version based on your CUDA)
+torch>=1.13.0
+numpy>=1.21.0
+
+# Experiment tracking
+wandb==0.16.*
+
+# Visualization and plotting
+matplotlib>=3.5.0
+Pillow>=8.0.0
+
+# Development and utility
+pygame==2.1.0
+
+# Optional: for video recording and evaluation
+# moviepy==1.0.3
+
+# Optional: for model sharing
+# huggingface-hub==0.11.1
+
+# Note: IsaacSim dependencies are handled by the IsaacSim installation
+# Make sure to run this with Isaac Sim's Python environment 
