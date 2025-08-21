@@ -44,9 +44,25 @@ multi_ambiente_rl/
 
 ### 1. Pré-requisitos
 
+- Docker 
 - Isaac Sim 4.5.0+ instalado
 - CUDA 11.8+ (para GPU)
 - Python 3.8+ (use o Python do Isaac Sim)
+
+### Docker 
+
+Execute o processo para o build da imagem docker:
+
+```
+docker build -t ambiente-rl-isaacsim:4.5.0 -f docker/Dockerfile .
+
+```
+
+Para rodar o container, utilize o script run_docker.sh
+
+```
+./run_docker.sh
+```
 
 ### 2. Dependências
 
@@ -60,7 +76,7 @@ pip install -r requirements.txt
 
 ```bash
 # Teste rápido do ambiente
-/isaac-sim/python.sh -c "from cleanrl_isaacsim.envs.multi_env_wrapper import make_env; print('✅ Installation OK')"
+./python-cleanrl.sh -c "from cleanrl_isaacsim.envs.multi_env_wrapper import make_env; print('✅ Installation OK')"
 ```
 
 ## 🎯 Uso Rápido
@@ -69,16 +85,16 @@ pip install -r requirements.txt
 
 ```bash
 # Treinamento rápido (sem tracking)
-/isaac-sim/python.sh scripts/train_ppo.py --num-envs 4 --total-timesteps 100000
+./python-cleanrl.sh scripts/train_ppo.py --num-envs 4 --total-timesteps 100000
 
 # Treinamento com WandB tracking
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 16 \
     --total-timesteps 10000000 \
     --track
 
 # Treinamento com WandB e nome customizado
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 16 \
     --exp-name "meu_experimento" \
     --track
@@ -88,7 +104,7 @@ pip install -r requirements.txt
 
 ```bash
 # Avaliar modelo treinado
-/isaac-sim/python.sh scripts/eval_model.py \
+./python-cleanrl.sh scripts/eval_model.py \
     --model-path models/ppo_model.pt \
     --num-episodes 20 \
     --render
@@ -98,10 +114,10 @@ pip install -r requirements.txt
 
 ```bash
 # Sweep rápido
-/isaac-sim/python.sh scripts/sweep_hyperparams.py --quick
+./python-cleanrl.sh scripts/sweep_hyperparams.py --quick
 
 # Sweep completo no projeto isaacsim
-/isaac-sim/python.sh scripts/sweep_hyperparams.py \
+./python-cleanrl.sh scripts/sweep_hyperparams.py \
     --project "isaacsim" \
     --count 50
 ```
@@ -111,7 +127,7 @@ pip install -r requirements.txt
 ### Teste Rápido (Desenvolvimento)
 
 ```bash
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 4 \
     --total-timesteps 100000 \
     --num-steps 8
@@ -120,7 +136,7 @@ pip install -r requirements.txt
 ### Treinamento Completo com WandB
 
 ```bash
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 32 \
     --total-timesteps 50000000 \
     --num-steps 32 \
@@ -131,7 +147,7 @@ pip install -r requirements.txt
 ### Multi-Robot (64 robôs) com Tracking
 
 ```bash
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 64 \
     --spacing 2.0 \
     --learning-rate 0.001 \
@@ -194,7 +210,7 @@ tensorboard --logdir experiments/runs/
 ```bash
 # Habilitar logs detalhados
 export ISAAC_SIM_LOG_LEVEL=DEBUG
-/isaac-sim/python.sh scripts/train_ppo.py --verbose
+./python-cleanrl.sh scripts/train_ppo.py --verbose
 ```
 
 ## 🔬 Experimentos Avançados
@@ -203,7 +219,7 @@ export ISAAC_SIM_LOG_LEVEL=DEBUG
 
 ```bash
 # Começar com poucos robôs e aumentar gradualmente
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 4 \
     --curriculum \
     --max-envs 32
@@ -213,7 +229,7 @@ export ISAAC_SIM_LOG_LEVEL=DEBUG
 
 ```bash
 # Treinar em ambiente simples, transferir para complexo
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --load-model models/simple_env.pt \
     --env-complexity high
 ```
@@ -222,7 +238,7 @@ export ISAAC_SIM_LOG_LEVEL=DEBUG
 
 ```bash
 # Treinar múltiplas tarefas simultaneamente
-/isaac-sim/python.sh scripts/train_ppo.py \
+./python-cleanrl.sh scripts/train_ppo.py \
     --tasks "walk,turn,jump" \
     --task-weights "0.5,0.3,0.2"
 ```
