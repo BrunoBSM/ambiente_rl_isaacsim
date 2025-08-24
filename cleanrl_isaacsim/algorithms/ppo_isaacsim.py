@@ -193,7 +193,7 @@ def train(args: Args):
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            sync_tensorboard=True,
+            sync_tensorboard=False,
             config=vars(args),
             name=run_name,
             monitor_gym=True,
@@ -332,13 +332,9 @@ def train(args: Args):
                             episode_rewards.append(episodic_return)
                             episode_lengths.append(episodic_length)
                             
-                            print(f"global_step={global_step}, robot_{i}, episodic_return={episodic_return:.2f}, length={episodic_length}")
+                            print(f"global_step={global_step}, episodic_return={episodic_return:.2f}, length={episodic_length}")
                             writer.add_scalar("charts/episodic_return", episodic_return, global_step)
                             writer.add_scalar("charts/episodic_length", episodic_length, global_step)
-                            
-                            # Log métricas específicas por robô
-                            writer.add_scalar(f"robots/robot_{i}_return", episodic_return, global_step)
-                            writer.add_scalar(f"robots/robot_{i}_length", episodic_length, global_step)
                 
                 # Log métricas agregadas dos robôs se houver episódios completos
                 if len(episode_rewards) > 0 and args.track:
@@ -380,8 +376,15 @@ def train(args: Args):
             b_returns = returns.reshape(-1)
             b_values = values.reshape(-1)
 
-            # Update phase
+            # Update phase - Reset acumuladores a cada iteração
             clipfracs = []
+            # Acumular métricas para logging (resetado a cada iteração)
+            policy_losses = []
+            value_losses = []
+            entropy_losses = []
+            old_approx_kls = []
+            approx_kls = []
+            
             for epoch in range(args.update_epochs):
                 b_inds = torch.randperm(args.batch_size, device=device)
                 for start in range(0, args.batch_size, args.minibatch_size):
@@ -425,26 +428,74 @@ def train(args: Args):
                     entropy_loss = entropy.mean()
                     loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
+                    # NaN/Inf Guard - Verificação de estabilidade numérica
+                    if torch.isnan(loss) or torch.isinf(loss) or torch.isnan(pg_loss) or torch.isnan(v_loss):
+                        print(f"[ERROR] NaN/Inf detected in losses at iteration {iteration}, epoch {epoch}")
+                        print(f"  Policy Loss: {pg_loss.item()}")
+                        print(f"  Value Loss: {v_loss.item()}")
+                        print(f"  Entropy Loss: {entropy_loss.item()}")
+                        print(f"  Total Loss: {loss.item()}")
+                        print("[ERROR] Stopping training due to numerical instability")
+                        if hasattr(envs, 'close'):
+                            envs.close()
+                        writer.close()
+                        raise RuntimeError("Training stopped due to NaN/Inf in losses")
+
+                    # Acumular métricas (após verificação de estabilidade)
+                    policy_losses.append(pg_loss.item())
+                    value_losses.append(v_loss.item())
+                    entropy_losses.append(entropy_loss.item())
+                    old_approx_kls.append(old_approx_kl.item())
+                    approx_kls.append(approx_kl.item())
+
                     optimizer.zero_grad()
                     loss.backward()
                     nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                     optimizer.step()
 
-                if args.target_kl is not None and approx_kl > args.target_kl:
-                    break
+                # KL Target check - Usar média da época atual para early stopping
+                if args.target_kl is not None and len(approx_kls) > 0:
+                    mean_approx_kl = np.mean(approx_kls)
+                    if mean_approx_kl > args.target_kl:
+                        print(f"[INFO] Early stopping at epoch {epoch}: mean_approx_kl ({mean_approx_kl:.6f}) > target_kl ({args.target_kl})")
+                        break
 
-                    # Logging
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
-        
-        sps = int(global_step / (time.time() - start_time))
-        print(f"Iteration {iteration}/{args.num_iterations}, SPS: {sps}")
-        writer.add_scalar("charts/SPS", sps, global_step)
+            # Logging (após todos os updates de minibatch)
+            # Verificar se temos métricas válidas para logar
+            if len(policy_losses) > 0:
+                writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+                writer.add_scalar("losses/value_loss", np.mean(value_losses), global_step)
+                writer.add_scalar("losses/policy_loss", np.mean(policy_losses), global_step)
+                writer.add_scalar("losses/entropy", np.mean(entropy_losses), global_step)
+                writer.add_scalar("losses/old_approx_kl", np.mean(old_approx_kls), global_step)
+                writer.add_scalar("losses/approx_kl", np.mean(approx_kls), global_step)
+                writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
+                
+                # Log métricas de estabilidade
+                writer.add_scalar("stability/policy_loss_std", np.std(policy_losses), global_step)
+                writer.add_scalar("stability/value_loss_std", np.std(value_losses), global_step)
+            else:
+                print(f"[WARN] No metrics to log at iteration {iteration} (possible early stop)")
+            
+            sps = int(global_step / (time.time() - start_time))
+            print(f"Iteration {iteration}/{args.num_iterations}, SPS: {sps}")
+            writer.add_scalar("charts/SPS", sps, global_step)
+            
+            # Salvar métricas para WandB (fora do escopo de if)
+            if len(policy_losses) > 0:
+                current_policy_loss = np.mean(policy_losses)
+                current_value_loss = np.mean(value_losses)
+                current_entropy_loss = np.mean(entropy_losses)
+                current_old_approx_kl = np.mean(old_approx_kls)
+                current_approx_kl = np.mean(approx_kls)
+                current_clipfrac = np.mean(clipfracs)
+                current_policy_loss_std = np.std(policy_losses)
+                current_value_loss_std = np.std(value_losses)
+            else:
+                # Fallback para caso de early stop
+                current_policy_loss = current_value_loss = current_entropy_loss = 0.0
+                current_old_approx_kl = current_approx_kl = current_clipfrac = 0.0
+                current_policy_loss_std = current_value_loss_std = 0.0
         
         # Log métricas específicas do IsaacSim
         if args.track and iteration % 10 == 0:  # A cada 10 iterações
@@ -468,6 +519,18 @@ def train(args: Args):
                     "training/time_elapsed": time.time() - start_time,
                     "performance/steps_per_second": sps,
                     "performance/episodes_per_hour": sps * 3600 / 1000,  # Estimativa
+                    # Métricas de loss
+                    "losses/policy_loss": current_policy_loss,
+                    "losses/value_loss": current_value_loss,
+                    "losses/entropy": current_entropy_loss,
+                    "losses/old_approx_kl": current_old_approx_kl,
+                    "losses/approx_kl": current_approx_kl,
+                    "losses/clipfrac": current_clipfrac,
+                    # Métricas de estabilidade
+                    "stability/policy_loss_std": current_policy_loss_std,
+                    "stability/value_loss_std": current_value_loss_std,
+                    "charts/learning_rate": optimizer.param_groups[0]["lr"],
+                    "charts/SPS": sps,
                 }, step=global_step)
                 
             except Exception as e:

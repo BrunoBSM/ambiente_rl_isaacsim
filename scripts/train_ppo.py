@@ -24,14 +24,14 @@ def main():
     Função principal do script de treinamento.
     """
     print("="*80)
-    print("🤖 CleanRL + IsaacSim Multi-Robot Training")
+    print("CleanRL + IsaacSim Multi-Robot Training")
     print("="*80)
     
     # Parse argumentos usando tyro (mesmo sistema do CleanRL)
     args = tyro.cli(Args)
     
     # Imprimir configuração
-    print("\n📋 Training Configuration:")
+    print("\nTraining Configuration:")
     print(f"  Environment: {args.env_id}")
     print(f"  Number of robots: {args.num_envs}")
     print(f"  Total timesteps: {args.total_timesteps:,}")
@@ -40,10 +40,10 @@ def main():
     print(f"  WandB tracking: {'Yes' if args.track else 'No'}")
     if args.track:
         print(f"  WandB project: {args.wandb_project_name}")
-        print(f"  📊 Monitor at: https://wandb.ai/{args.wandb_entity}/{args.wandb_project_name}")
+        print(f"   Monitor at: https://wandb.ai/{args.wandb_entity}/{args.wandb_project_name}")
     
     # Confirmação antes de começar
-    response = input("\n🚀 Start training? [y/N]: ")
+    response = input("\n Start training? [y/N]: ")
     if response.lower() not in ['y', 'yes']:
         print("Training cancelled.")
         return
@@ -53,17 +53,17 @@ def main():
     try:
         # Executar treinamento
         train(args)
-        print("\n✅ Training completed successfully!")
+        print("\n Training completed successfully!")
         
     except KeyboardInterrupt:
-        print("\n⚠️ Training interrupted by user")
+        print("\n Training interrupted by user")
         
     except Exception as e:
-        print(f"\n❌ Training failed with error: {e}")
+        print(f"\n Training failed with error: {e}")
         raise
     
     finally:
-        print("\n🔚 Training session ended")
+        print("\n Training session ended")
 
 
 if __name__ == "__main__":

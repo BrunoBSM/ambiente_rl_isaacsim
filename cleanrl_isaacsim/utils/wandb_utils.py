@@ -44,7 +44,7 @@ def init_wandb(
         name=run_name,
         config=config,
         tags=default_tags,
-        sync_tensorboard=True,
+        sync_tensorboard=False,
         monitor_gym=True,
         save_code=True,
     )
