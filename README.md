@@ -1,274 +1,233 @@
-# 🤖 CleanRL + IsaacSim Multi-Robot RL
+# Ambiente RL Isaac Sim - Go2 Multi-Robot
 
-Integração do CleanRL com IsaacSim para treinamento de reinforcement learning com múltiplos robôs GO2 em paralelo.
+Sistema de treinamento de Reinforcement Learning para robôs Go2 usando Isaac Sim e CleanRL.
 
-## 📋 Visão Geral
-
-Este projeto implementa uma pipeline completa de treinamento de RL usando:
-- **CleanRL**: Framework de RL limpo e bem documentado
-- **IsaacSim**: Simulação física de alta fidelidade da NVIDIA
-- **Multi-Robot**: Treinamento paralelo com múltiplos robôs GO2
-- **WandB**: Tracking e monitoramento de experimentos
-
-## 🏗️ Estrutura do Projeto
+## Estrutura do Ambiente
 
 ```
-multi_ambiente_rl/
-├── cleanrl_isaacsim/           # 📦 Pacote principal CleanRL+IsaacSim
-│   ├── envs/                   # 🌍 Ambientes e wrappers
-│   │   ├── multi_env_wrapper.py    # Wrapper principal (adapta ambiente existente)
-│   │   ├── go2_env.py              # Ambiente single-robot (placeholder)
-│   │   └── wrappers.py             # Wrappers adicionais
-│   ├── algorithms/             # 🧠 Algoritmos de RL
-│   │   ├── ppo_isaacsim.py         # PPO adaptado para IsaacSim
-│   │   └── utils.py                # Utilitários para algoritmos
-│   └── utils/                  # 🔧 Utilitários gerais
-│       ├── wandb_utils.py          # Integração WandB
-│       └── evaluation.py           # Avaliação de modelos
-├── core/                       # 🎯 Código core do IsaacSim
-│   ├── isaac_gym_multi_env.py      # Ambiente multi-robô original
-│   ├── multi_sim_helper.py         # Helper de simulação
-│   └── sim_launcher.py             # Launcher do IsaacSim
-├── scripts/                    # 🚀 Scripts de execução
-│   ├── train_ppo.py                # Script principal de treinamento
-│   ├── eval_model.py               # Avaliação de modelos
-│   └── sweep_hyperparams.py        # Busca de hiperparâmetros
-├── configs/                    # ⚙️ Configurações
-│   └── default_ppo.py              # Configurações padrão PPO
-├── experiments/                # 📊 Logs e resultados
-├── models/                     # 💾 Modelos salvos
-└── requirements.txt            # 📋 Dependências
+ambiente_rl_isaacsim/
+├── cleanrl_isaacsim/           # Algoritmos RL customizados
+│   ├── algorithms/             # Implementações de algoritmos
+│   │   ├── ppo_isaacsim.py    # PPO para Isaac Sim
+│   │   └── utils.py           # Utilitários
+│   ├── envs/                  # Ambientes customizados
+│   │   ├── go2_env.py         # Ambiente Go2
+│   │   ├── multi_env_wrapper.py # Wrapper multi-ambiente
+│   │   └── wrappers.py        # Wrappers adicionais
+│   └── utils/                 # Utilitários gerais
+│       ├── evaluation.py     # Avaliação de modelos
+│       └── wandb_utils.py     # Integração WandB
+├── core/                      # Componentes principais
+│   ├── isaac_gym_multi_env.py # Ambiente multi-robô
+│   ├── multi_sim_helper.py    # Helper para simulação
+│   └── sim_launcher.py        # Launcher da simulação
+├── configs/                   # Configurações de treinamento
+│   └── default_ppo.py        # Configurações PPO
+├── scripts/                   # Scripts de execução
+│   ├── train_ppo.py          # Script principal de treinamento
+│   ├── eval_model.py         # Avaliação de modelos
+│   └── sweep_hyperparams.py  # Sweep de hiperparâmetros
+├── experiments/               # Resultados de experimentos
+├── models/                    # Modelos treinados
+├── docker/                    # Configuração Docker
+│   └── Dockerfile            # Imagem Isaac Sim + CleanRL
+├── docker-compose.yml         # Orquestração Docker
+├── run_docker.sh             # Script para iniciar container
+├── python-cleanrl.sh         # Script para rodar script python
+└── stop.sh                   # Script para parar container
 ```
 
-## 🚀 Instalação
+## Instalação e Utilização com Docker
 
-### 1. Pré-requisitos
+### Pré-requisitos
 
-- Docker 
-- Isaac Sim 4.5.0+ instalado
-- CUDA 11.8+ (para GPU)
-- Python 3.8+ (use o Python do Isaac Sim)
+- Docker com suporte a GPU (nvidia-docker)
+- Docker Compose
+- Sistema X11 para GUI (Linux)
 
-### Docker 
+### Início Rápido
 
-Execute o processo para o build da imagem docker:
-
-```
-docker build -t ambiente-rl-isaacsim:4.5.0 -f docker/Dockerfile .
-
+1. **Iniciar ambiente (primeira vez - build automático)**:
+```bash
+./run_docker.sh --build
 ```
 
-Para rodar o container, utilize o script run_docker.sh
-
-```
+2. **Iniciar ambiente (execuções subsequentes)**:
+```bash
 ./run_docker.sh
 ```
 
-### 2. Dependências
-
+3. **Parar ambiente**:
 ```bash
-# No ambiente do Isaac Sim
-cd multi_ambiente_rl
-pip install -r requirements.txt
+./stop.sh
 ```
 
-### 3. Verificar Instalação
+O script `run_docker.sh` automaticamente:
+- Builda a imagem Isaac Sim + CleanRL (se `--build` especificado)
+- Inicia o container em background
+- Entra automaticamente no container
 
-```bash
-# Teste rápido do ambiente
-./python-cleanrl.sh -c "from cleanrl_isaacsim.envs.multi_env_wrapper import make_env; print('✅ Installation OK')"
-```
+### Estrutura do Container
 
-## 🎯 Uso Rápido
+- **Workspace**: `/isaac-sim/ambiente_rl_isaacsim`
+- **Python**: Ambiente virtual em `/isaac-sim/venv-cleanrl`
+- **Imagem**: `ambiente-rl-isaacsim:4.5.0`
 
-### Treinamento Básico
+## Treinamento com Exemplos
 
-```bash
-# Treinamento rápido (sem tracking)
-./python-cleanrl.sh scripts/train_ppo.py --num-envs 4 --total-timesteps 100000
+### Flags Principais
 
-# Treinamento com WandB tracking
-./python-cleanrl.sh scripts/train_ppo.py \
-    --num-envs 16 \
-    --total-timesteps 10000000 \
-    --track
+#### Controle de Experimento
+- `--exp-name`: Nome do experimento
+- `--seed`: Seed para reprodutibilidade
+- `--total-timesteps`: Total de passos de treinamento
 
-# Treinamento com WandB e nome customizado
-./python-cleanrl.sh scripts/train_ppo.py \
-    --num-envs 16 \
-    --exp-name "meu_experimento" \
-    --track
-```
+#### Ambiente
+- `--num-envs`: Número de robôs em paralelo
+- `--spacing`: Espaçamento entre robôs (metros)
+- `--use-relative-control`: Usar controle relativo
+- `--relative-scale`: Escala para controle relativo
+- `--safety-margin`: Margem de segurança para limites
 
-### Avaliação de Modelo
+#### Algoritmo PPO
+- `--learning-rate`: Taxa de aprendizado
+- `--num-steps`: Passos por rollout
+- `--gamma`: Fator de desconto
+- `--gae-lambda`: Lambda para GAE
+- `--clip-coef`: Coeficiente de clipping
+- `--ent-coef`: Coeficiente de entropia
+- `--vf-coef`: Coeficiente da função valor
+- `--num-minibatches`: Número de mini-batches
+- `--update-epochs`: Épocas de atualização
 
-```bash
-# Avaliar modelo treinado
-./python-cleanrl.sh scripts/eval_model.py \
-    --model-path models/ppo_model.pt \
-    --num-episodes 20 \
-    --render
-```
+#### WandB Tracking
+- `--track`: Habilitar tracking WandB
+- `--wandb-project-name`: Nome do projeto WandB
+- `--wandb-entity`: Entidade/time WandB
 
-### Busca de Hiperparâmetros
+#### Visualização
+- `--webrtc`: Habilitar WebRTC para visualização remota
 
-```bash
-# Sweep rápido
-./python-cleanrl.sh scripts/sweep_hyperparams.py --quick
+### Exemplos de Uso
 
-# Sweep completo no projeto isaacsim
-./python-cleanrl.sh scripts/sweep_hyperparams.py \
-    --project "isaacsim" \
-    --count 50
-```
-
-## 📊 Configurações Predefinidas
-
-### Teste Rápido (Desenvolvimento)
-
+#### 1. Teste Rápido (desenvolvimento)
 ```bash
 ./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 4 \
     --total-timesteps 100000 \
-    --num-steps 8
+    --num-steps 8 \
+    --exp-name "quick_test"
 ```
 
-### Treinamento Completo com WandB
+#### 2. Treinamento Básico com WandB
+```bash
+./python-cleanrl.sh scripts/train_ppo.py \
+    --num-envs 16 \
+    --total-timesteps 10000000 \
+    --track \
+    --wandb-project-name "go2-multibot" \
+    --wandb-entity "seu-usuario" \
+    --exp-name "baseline_training"
+```
 
+#### 3. Treinamento Completo Otimizado
 ```bash
 ./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 32 \
     --total-timesteps 50000000 \
+    --learning-rate 0.0026 \
     --num-steps 32 \
+    --spacing 2.0 \
     --track \
+    --wandb-project-name "go2-production" \
+    --wandb-entity "seu-time" \
+    --exp-name "production_v1" \
     --anneal-lr
 ```
 
-### Multi-Robot (64 robôs) com Tracking
+#### 4. Experimento com Controle Relativo
+```bash
+./python-cleanrl.sh scripts/train_ppo.py \
+    --num-envs 16 \
+    --use-relative-control \
+    --relative-scale 0.05 \
+    --learning-rate 0.002 \
+    --track \
+    --wandb-project-name "go2-relative" \
+    --exp-name "relative_control_test"
+```
 
+#### 5. Treinamento Multi-Robô Massivo
 ```bash
 ./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 64 \
-    --spacing 2.0 \
+    --total-timesteps 100000000 \
+    --spacing 1.5 \
+    --num-steps 64 \
     --learning-rate 0.001 \
-    --track
+    --track \
+    --wandb-project-name "go2-massive" \
+    --exp-name "massive_parallel"
 ```
 
-## 🔧 Customização
-
-### Novo Ambiente
-
-1. Criar wrapper em `cleanrl_isaacsim/envs/`
-2. Registrar em `cleanrl_isaacsim/envs/__init__.py`
-3. Usar em scripts com `--env-id`
-
-### Novo Algoritmo
-
-1. Criar em `cleanrl_isaacsim/algorithms/`
-2. Seguir padrão do `ppo_isaacsim.py`
-3. Implementar função `train(args)`
-
-### Métricas Customizadas
-
-```python
-# Em cleanrl_isaacsim/utils/wandb_utils.py
-def log_custom_metrics(step, custom_data):
-    wandb.log({
-        "custom/metric": custom_data,
-        "custom/robot_speed": robot_speed,
-    }, step=step)
-```
-
-## 📈 Monitoramento
-
-### WandB Dashboard
-
-Acompanhe métricas em tempo real:
-- Recompensas por episódio
-- Performance por robô
-- Métricas de treinamento (loss, KL divergence)
-- FPS de simulação
-- Vídeos dos robôs (opcional)
-
-### TensorBoard (Local)
-
+#### 6. Sweep de Hiperparâmetros
 ```bash
-tensorboard --logdir experiments/runs/
+./python-cleanrl.sh scripts/sweep_hyperparams.py \
+    --project "go2-hyperparams" \
+    --entity "seu-time" \
+    --count 20 \
+    --base-num-envs 8 \
+    --base-total-timesteps 1000000
 ```
 
-## 🐛 Debugging
-
-### Problemas Comuns
-
-1. **Erro de Import**: Verificar se está usando Python do Isaac Sim
-2. **GPU Out of Memory**: Reduzir `--num-envs`
-3. **Simulação Lenta**: Verificar drivers NVIDIA
-4. **WandB Login**: `wandb login` no ambiente do Isaac Sim
-
-### Logs Detalhados
-
+#### 7. Treinamento com WebRTC (Visualização Remota)
 ```bash
-# Habilitar logs detalhados
-export ISAAC_SIM_LOG_LEVEL=DEBUG
-./python-cleanrl.sh scripts/train_ppo.py --verbose
-```
-
-## 🔬 Experimentos Avançados
-
-### Curriculum Learning
-
-```bash
-# Começar com poucos robôs e aumentar gradualmente
 ./python-cleanrl.sh scripts/train_ppo.py \
+    --num-envs 16 \
+    --webrtc \
+    --track \
+    --wandb-project-name "go2-webrtc" \
+    --exp-name "remote_visualization"
+```
+
+### Configurações WandB Avançadas
+
+#### Tracking Detalhado
+```bash
+./python-cleanrl.sh scripts/train_ppo.py \
+    --track \
+    --wandb-project-name "go2-detailed" \
+    --wandb-entity "research-team" \
+    --capture-video \
+    --exp-name "detailed_analysis" \
+    --num-envs 16
+```
+
+#### Múltiplos Experimentos com Seeds
+```bash
+# Seed 1
+./python-cleanrl.sh scripts/train_ppo.py --track --seed 1 --exp-name "multi_seed_1"
+
+# Seed 42  
+./python-cleanrl.sh scripts/train_ppo.py --track --seed 42 --exp-name "multi_seed_42"
+
+# Seed 123
+./python-cleanrl.sh scripts/train_ppo.py --track --seed 123 --exp-name "multi_seed_123"
+```
+
+### Monitoramento
+
+- **WandB Dashboard**: `https://wandb.ai/[entity]/[project]`
+- **TensorBoard**: `tensorboard --logdir experiments/runs`
+- **Logs do Container**: `docker compose logs -f isaac-sim`
+
+> **⚠️ Nota sobre WandB**: Na primeira execução com `--track`, o WandB solicitará sua API key. Obtenha sua chave em [wandb.ai/settings](https://wandb.ai/settings) e cole quando solicitado. A chave ficará salva para execuções futuras.
+
+### Avaliação de Modelos
+
+```bash
+./python-cleanrl.sh scripts/eval_model.py \
+    --model-path "models/ppo_model.pt" \
     --num-envs 4 \
-    --curriculum \
-    --max-envs 32
-```
-
-### Transfer Learning
-
-```bash
-# Treinar em ambiente simples, transferir para complexo
-./python-cleanrl.sh scripts/train_ppo.py \
-    --load-model models/simple_env.pt \
-    --env-complexity high
-```
-
-### Multi-Task Learning
-
-```bash
-# Treinar múltiplas tarefas simultaneamente
-./python-cleanrl.sh scripts/train_ppo.py \
-    --tasks "walk,turn,jump" \
-    --task-weights "0.5,0.3,0.2"
-```
-
-## 📚 Recursos
-
-- [CleanRL Documentation](https://docs.cleanrl.dev/)
-- [Isaac Sim Documentation](https://docs.omniverse.nvidia.com/isaacsim/)
-- [WandB Guides](https://docs.wandb.ai/)
-- [PPO Paper](https://arxiv.org/abs/1707.06347)
-
-## 🤝 Contribuição
-
-1. Fork o projeto
-2. Crie feature branch (`git checkout -b feature/nova-funcionalidade`)
-3. Commit mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
-4. Push para branch (`git push origin feature/nova-funcionalidade`)
-5. Abra Pull Request
-
-## 📄 Licença
-
-Este projeto está sob licença MIT. Veja `LICENSE` para detalhes.
-
-## 🙏 Agradecimentos
-
-- **CleanRL Team**: Framework de RL excepcional
-- **NVIDIA Isaac Sim**: Simulação física de alta qualidade
-- **WandB**: Platform de tracking de experimentos
-- **Unitree**: Robô GO2 de referência
-
----
-
-**Developed with ❤️ for Multi-Robot Reinforcement Learning** 
+    --num-episodes 10
+``` 

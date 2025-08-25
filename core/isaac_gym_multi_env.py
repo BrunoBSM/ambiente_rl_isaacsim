@@ -163,7 +163,7 @@ class IsaacSimGo2MultiEnv(gym.Env):
                 
                 # Calcula mudança relativa baseada no SimHelper original
                 observer = self.multi_helper.robot_observers[env_id]
-                lower, upper = observer.get_joint_limits_normalized()
+                lower, upper = observer.get_joint_limits()
                 joint_range_safe = upper - lower
                 position_changes = action_clipped * self.relative_scale * joint_range_safe
                 

@@ -1,0 +1,45 @@
+services:
+  isaac-sim:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: ambiente-rl-isaacsim:4.5.0
+    container_name: isaac-sim-container
+    runtime: nvidia
+    environment:
+      - DISPLAY
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      # X11 socket for GUI
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.Xauthority:/root/.Xauthority:rw
+      
+      # Isaac Sim cache directories
+      - ${HOME}/docker/isaac-sim/cache/kit:/isaac-sim/kit/cache:rw
+      - ${HOME}/docker/isaac-sim/cache/ov:/root/.cache/ov:rw
+      - ${HOME}/docker/isaac-sim/cache/pip:/root/.cache/pip:rw
+      - ${HOME}/docker/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
+      - ${HOME}/docker/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
+      - ${HOME}/docker/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
+      - ${HOME}/docker/isaac-sim/data:/root/.local/share/ov/data:rw
+      - ${HOME}/docker/isaac-sim/documents:/root/Documents:rw
+      
+      # Project directory
+      - .:/isaac-sim/ambiente_rl_isaacsim:rw
+    
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    entrypoint: bash
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu] 

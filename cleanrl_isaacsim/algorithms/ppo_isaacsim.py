@@ -95,6 +95,8 @@ class Args:
     """use relative control instead of absolute"""
     relative_scale: float = 0.1
     """scale for relative control"""
+    webrtc: bool = False
+    """enable WebRTC streaming for remote visualization"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -180,6 +182,14 @@ def train(args: Args):
     """
     Função principal de treinamento PPO para IsaacSim.
     """
+    # Configurar WebRTC antes de qualquer importação Isaac Sim
+    if args.webrtc:
+        os.environ["ISAAC_WEBRTC"] = "1"
+        print(f"[PPO] WebRTC habilitado")
+    else:
+        os.environ["ISAAC_WEBRTC"] = "0"
+        print(f"[PPO] WebRTC desabilitado")
+    
     # Calcular parâmetros derivados
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -193,7 +203,7 @@ def train(args: Args):
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            sync_tensorboard=False,
+            sync_tensorboard=True,
             config=vars(args),
             name=run_name,
             monitor_gym=True,

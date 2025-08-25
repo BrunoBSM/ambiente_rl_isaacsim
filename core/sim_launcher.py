@@ -13,6 +13,7 @@ Note:
     - O parâmetro "headless": False permite visualização da simulação
     - Este módulo deve ser importado ANTES de qualquer outro módulo do Isaac Sim
     - A instância simulation_app é compartilhada globalmente para controle da simulação
+    - WebRTC pode ser habilitado via variável de ambiente ISAAC_WEBRTC=1
 
 Warning:
     Não modifique a ordem de importação. O SimulationApp deve ser inicializado
@@ -20,6 +21,7 @@ Warning:
 """
 
 import logging
+import os
 
 # Configurar logging ANTES do SimulationApp
 logging.basicConfig(
@@ -30,9 +32,15 @@ logging.basicConfig(
 
 from isaacsim import SimulationApp
 
-# Configurações opcionais
-ENABLE_WEBRTC = True  # Mude para True se quiser habilitar WebRTC
+# Configurações opcionais - lidas de variáveis de ambiente
+ENABLE_WEBRTC = os.getenv("ISAAC_WEBRTC", "0").lower() in ("1", "true", "yes")
 ENABLE_MOUSE_DRAW = True  # Mude para False se não quiser desenhar o mouse
+
+# Log da configuração WebRTC
+if ENABLE_WEBRTC:
+    logging.info("WebRTC será habilitado (ISAAC_WEBRTC=1)")
+else:
+    logging.info("WebRTC desabilitado (ISAAC_WEBRTC=0 ou não definido)")
 
 # Configuração do Isaac Sim
 if ENABLE_WEBRTC:

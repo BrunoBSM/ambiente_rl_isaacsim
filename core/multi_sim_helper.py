@@ -258,12 +258,12 @@ class RobotObserver:
         
         return observation
 
-    def get_joint_limits_normalized(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_joint_limits(self) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Get normalized joint limits for the specific robot.
+        Get joint limits for the specific robot in physical units (radians).
         
         Returns:
-            Tuple of (lower_limits, upper_limits) for this robot
+            Tuple of (lower_limits, upper_limits) for this robot in radians
         """
         # Ensure joint_limits are available
         if self.joint_limits is None:
@@ -304,7 +304,7 @@ class RobotObserver:
         Returns:
             Normalized joint positions
         """
-        lower, upper = self.get_joint_limits_normalized()
+        lower, upper = self.get_joint_limits()
         normalized = 2.0 * (positions - lower) / (upper - lower) - 1.0
         return np.clip(normalized, -1.0, 1.0)
 
@@ -785,10 +785,11 @@ class MultiSimHelper:
 
     def apply_actions(self, actions: np.ndarray):
         """
-        Apply actions to all robots.
+        Apply actions to all robots with proper deserialization for absolute control.
         
         Args:
-            actions: Actions array with shape (num_envs, num_joints)
+            actions: Actions array with shape (num_envs, num_joints) 
+                    Values should be in [-1, 1] range and will be mapped to joint limits
         """
         if actions.shape[0] != self.num_envs:
             raise ValueError(f"Actions shape {actions.shape} doesn't match num_envs {self.num_envs}")
@@ -798,12 +799,30 @@ class MultiSimHelper:
         if actions.shape[1] != expected_joints:
             raise ValueError(f"Actions have {actions.shape[1]} joints, expected {expected_joints}")
             
-        # Apply joint positions directly with safety checks
+        # Clip input actions to [-1, 1] range for safety
+        actions_clipped = np.clip(actions, -1.0, 1.0)
+        
+        # Convert normalized actions [-1,1] to physical joint positions [lower,upper]
+        joint_positions = np.zeros_like(actions_clipped)
+        
+        for env_id in range(self.num_envs):
+            observer = self.robot_observers[env_id]
+            lower, upper = observer.get_joint_limits()  # Get physical limits in radians
+            
+            # Desserialize [-1,1] -> [lower,upper]
+            # Formula: pos = lower + (action + 1) / 2 * (upper - lower)
+            joint_positions[env_id] = lower + (actions_clipped[env_id] + 1.0) / 2.0 * (upper - lower)
+            
+            # Safety clipping to ensure positions are within limits
+            joint_positions[env_id] = np.clip(joint_positions[env_id], lower, upper)
+        
+        # Apply the converted joint positions
         try:
-            self.go2_robots.set_joint_positions(actions)
+            self.go2_robots.set_joint_positions(joint_positions)
         except Exception as e:
             print(f"[ERROR] MultiSimHelper: Failed to apply actions: {e}")
             print(f"[ERROR] Actions shape: {actions.shape}")
+            print(f"[ERROR] Joint positions shape: {joint_positions.shape}")
             print(f"[ERROR] Expected shape: ({self.num_envs}, {expected_joints})")
             raise
 
