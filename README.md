@@ -45,6 +45,34 @@ ambiente_rl_isaacsim/
 - Docker Compose
 - Sistema X11 para GUI (Linux)
 
+### Configuração WandB (Opcional)
+
+Para usar tracking WandB sem precisar passar as credenciais toda vez, configure o arquivo `config.env`:
+
+1. **Criar arquivo de configuração na raiz do repositório**:
+```bash
+touch config.env
+```
+
+2. **Editar arquivo `config.env`** com suas credenciais WandB:
+```bash
+# Configurações WandB para Docker Compose
+# Copie este arquivo para config.env e configure suas variáveis
+
+# API Key do WandB (obtenha em https://wandb.ai/settings)
+WANDB_API_KEY=your_wandb_api_key_here
+
+# Entidade/time WandB (seu usuário ou organização)
+WANDB_ENTITY=your_username_or_team
+
+# Projeto padrão WandB (pode ser sobrescrito via --wandb-project-name)
+WANDB_PROJECT=your-project-name
+
+```
+
+> **📝 Nota**: Obtenha sua API key em [wandb.ai/settings](https://wandb.ai/settings)  
+> **🔒 Segurança**: O arquivo `config.env` deve estar no `.gitignore` para não expor credenciais
+
 ### Início Rápido
 
 1. **Iniciar ambiente (primeira vez - build automático)**:
@@ -66,6 +94,7 @@ O script `run_docker.sh` automaticamente:
 - Builda a imagem Isaac Sim + CleanRL (se `--build` especificado)
 - Inicia o container em background
 - Entra automaticamente no container
+- Carrega variáveis WandB do arquivo `config.env` (se existir)
 
 ### Estrutura do Container
 
@@ -102,8 +131,8 @@ O script `run_docker.sh` automaticamente:
 
 #### WandB Tracking
 - `--track`: Habilitar tracking WandB
-- `--wandb-project-name`: Nome do projeto WandB
-- `--wandb-entity`: Entidade/time WandB
+- `--wandb-project-name`: Nome do projeto WandB (padrão: `WANDB_PROJECT` env var)
+- `--wandb-entity`: Entidade/time WandB (padrão: `WANDB_ENTITY` env var)
 
 #### Visualização
 - `--webrtc`: Habilitar WebRTC para visualização remota
@@ -121,12 +150,18 @@ O script `run_docker.sh` automaticamente:
 
 #### 2. Treinamento Básico com WandB
 ```bash
+# Com variáveis configuradas no config.env (recomendado)
 ./python-cleanrl.sh scripts/train_ppo.py \
     --num-envs 16 \
     --total-timesteps 10000000 \
     --track \
-    --wandb-project-name "go2-multibot" \
-    --wandb-entity "seu-usuario" \
+    --exp-name "baseline_training"
+
+# Ou especificando manualmente (sobrescreve config.env)
+./python-cleanrl.sh scripts/train_ppo.py \
+    --num-envs 16 \
+    --total-timesteps 10000000 \
+    --track \
     --exp-name "baseline_training"
 ```
 
@@ -139,8 +174,6 @@ O script `run_docker.sh` automaticamente:
     --num-steps 32 \
     --spacing 2.0 \
     --track \
-    --wandb-project-name "go2-production" \
-    --wandb-entity "seu-time" \
     --exp-name "production_v1" \
     --anneal-lr
 ```
@@ -153,7 +186,6 @@ O script `run_docker.sh` automaticamente:
     --relative-scale 0.05 \
     --learning-rate 0.002 \
     --track \
-    --wandb-project-name "go2-relative" \
     --exp-name "relative_control_test"
 ```
 
@@ -166,7 +198,6 @@ O script `run_docker.sh` automaticamente:
     --num-steps 64 \
     --learning-rate 0.001 \
     --track \
-    --wandb-project-name "go2-massive" \
     --exp-name "massive_parallel"
 ```
 
@@ -186,7 +217,6 @@ O script `run_docker.sh` automaticamente:
     --num-envs 16 \
     --webrtc \
     --track \
-    --wandb-project-name "go2-webrtc" \
     --exp-name "remote_visualization"
 ```
 
@@ -196,8 +226,6 @@ O script `run_docker.sh` automaticamente:
 ```bash
 ./python-cleanrl.sh scripts/train_ppo.py \
     --track \
-    --wandb-project-name "go2-detailed" \
-    --wandb-entity "research-team" \
     --capture-video \
     --exp-name "detailed_analysis" \
     --num-envs 16
@@ -221,7 +249,10 @@ O script `run_docker.sh` automaticamente:
 - **TensorBoard**: `tensorboard --logdir experiments/runs`
 - **Logs do Container**: `docker compose logs -f isaac-sim`
 
-> **⚠️ Nota sobre WandB**: Na primeira execução com `--track`, o WandB solicitará sua API key. Obtenha sua chave em [wandb.ai/settings](https://wandb.ai/settings) e cole quando solicitado. A chave ficará salva para execuções futuras.
+> **⚠️ Nota sobre WandB**: 
+> - **Recomendado**: Configure suas credenciais no arquivo `config.env` (veja seção "Configuração WandB")
+> - **Alternativa**: Na primeira execução com `--track`, o WandB solicitará sua API key. Obtenha em [wandb.ai/settings](https://wandb.ai/settings)
+> - Se não configurar `WANDB_ENTITY`, use `--wandb-entity seu_usuario` no comando
 
 ### Avaliação de Modelos
 

@@ -41,10 +41,10 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "isaacsim"
-    """the wandb's project name"""
-    wandb_entity: Optional[str] = None
-    """the entity (team) of wandb's project"""
+    wandb_project_name: str = os.getenv("WANDB_PROJECT", "isaacsim")
+    """the wandb's project name (uses WANDB_PROJECT env var as default)"""
+    wandb_entity: Optional[str] = os.getenv("WANDB_ENTITY", None)
+    """the entity (team) of wandb's project (uses WANDB_ENTITY env var as default)"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
@@ -189,6 +189,21 @@ def train(args: Args):
     else:
         os.environ["ISAAC_WEBRTC"] = "0"
         print(f"[PPO] WebRTC desabilitado")
+    
+    # Validar configurações WandB se tracking estiver habilitado
+    if args.track:
+        wandb_api_key = os.getenv("WANDB_API_KEY")
+        if not wandb_api_key or wandb_api_key.strip() == "":
+            print(f"[PPO] ⚠️  WANDB_API_KEY não configurada!")
+            print(f"[PPO] Configure no arquivo config.env ou execute: export WANDB_API_KEY=your_key")
+            print(f"[PPO] Obtenha sua chave em: https://wandb.ai/settings")
+            print(f"[PPO] O WandB solicitará a chave durante a execução...")
+        
+        if not args.wandb_entity or args.wandb_entity.strip() == "":
+            print(f"[PPO] ⚠️  WANDB_ENTITY não configurada!")
+            print(f"[PPO] Configure no arquivo config.env ou use --wandb-entity seu_usuario")
+        
+        print(f"[PPO] WandB Config: projeto='{args.wandb_project_name}', entity='{args.wandb_entity}'")
     
     # Calcular parâmetros derivados
     args.batch_size = int(args.num_envs * args.num_steps)

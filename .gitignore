@@ -2,3 +2,4 @@ wandb/*
 *.etli
 *__pycache__*
 experiments/runs/*
+config.env
