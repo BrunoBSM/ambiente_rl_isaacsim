@@ -1,8 +1,9 @@
 import numpy as np
 import math
-from typing import Dict, Tuple, Union, List, Optional
+from typing import Dict, Tuple, Union, List
+import time
 
-from sim_launcher import simulation_app  # garante que o SimulationApp foi inicializado antes
+from core.sim_launcher import simulation_app  # garante que o SimulationApp foi inicializado antes
 
 from isaacsim.core.api import World
 from isaacsim.core.prims import Articulation
@@ -31,6 +32,7 @@ try:
 except ImportError:
     print("[INFO] Rotation utilities not available - using fallback methods")
     quat_to_euler_angles = None
+
 
 class RobotObserver:
     """
@@ -632,14 +634,18 @@ class MultiSimHelper:
         self.world.scene.add_default_ground_plane()
         
         # Add lighting
-        stage = omni.usd.get_context().get_stage()
-        UsdLux.DistantLight.Define(stage, Sdf.Path("/DistantLight")).CreateIntensityAttr(300)
+        self.stage = omni.usd.get_context().get_stage()
+        UsdLux.DistantLight.Define(self.stage, Sdf.Path("/DistantLight")).CreateIntensityAttr(300)
         
         # Setup multi-robot environment
         self._setup_multi_robot_environment()
         
+        print("[INFO] Multi robot environment setup")
+
         # Initialize simulation - IMPORTANTE: fazer antes de criar observers
         self.world.reset()
+
+        print("[INFO] World reset")
         
         # Calculate and store initial positions for each robot in the grid
         self._calculate_initial_positions()
@@ -750,7 +756,8 @@ class MultiSimHelper:
         stage_utils.add_reference_to_stage(usd_path=go2_usd_path, prim_path=f"{env_zero_path}/go2")
         
         # Create the base environment Xform
-        UsdGeom.Xform.Define(stage_utils.get_current_stage(), env_zero_path)
+        # UsdGeom.Xform.Define(stage_utils.get_current_stage(), env_zero_path)
+        UsdGeom.Xform.Define(self.stage, env_zero_path)
         
         # Clone the environment using GridCloner
         print(f"[INFO] Cloning {self.num_envs} environments with spacing {self.spacing}m...")
@@ -782,6 +789,7 @@ class MultiSimHelper:
         )
         
         print(f"[INFO] Created Articulation view with {self.go2_robots.count} robots")
+        # time.sleep(5)  # Wait for the robots to be created
 
     def apply_actions(self, actions: np.ndarray):
         """
