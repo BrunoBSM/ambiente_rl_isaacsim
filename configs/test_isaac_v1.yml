@@ -1,0 +1,45 @@
+# PPO Configuration for IsaacSim with custom environment kwargs
+# This demonstrates how to pass environment-specific arguments
+
+# Isaac settings
+
+# Experiment settings
+seed: 42
+torch_deterministic: true
+cuda: true
+
+# Logging and tracking
+track: false
+# capture_video: true
+# record_every: 100000
+save_model: true
+upload_model: false
+hf_entity: ""
+
+# Environment settings
+total_timesteps: 50000000
+
+# Algorithm hyperparameters
+learning_rate: 0.0003
+num_envs: 1
+num_steps: 1024
+anneal_lr: false
+gamma: 0.99
+gae_lambda: 0.95
+num_minibatches: 32
+update_epochs: 10
+norm_adv: true
+clip_coef: 0.2
+clip_vloss: true
+ent_coef: 0.005
+vf_coef: 0.5
+max_grad_norm: 0.5
+target_kl: null
+
+# Environment-specific kwargs
+# These parameters will be passed directly to IsaacSimGo2MultiEnv constructor
+env_kwargs:
+  spacing: 3.0  # Override default spacing of 3.0
+  safety_margin: 0.1  # Override default safety_margin of 0.1
+  use_relative_control: false  # Override default use_relative_control of False
+  relative_scale: 0.1  # Override default relative_scale of 0.1
