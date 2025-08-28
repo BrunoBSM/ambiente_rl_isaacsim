@@ -3,7 +3,7 @@ from gymnasium import spaces
 import numpy as np
 import logging
 
-from multi_sim_helper import MultiSimHelper
+from core.multi_sim_helper import MultiSimHelper
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -86,6 +86,20 @@ class IsaacSimGo2MultiEnv(gym.Env):
             dtype=np.float32
         )
 
+        self.single_action_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(self.n_joints,),
+            dtype=np.float32
+        )
+        
+        self.single_observation_space = spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(self.obs_dim,),
+            dtype=np.float32
+        )
+
         # Variáveis de estado
         self.episode_steps = np.zeros(self.num_envs, dtype=int)
         self.episode_rewards = np.zeros(self.num_envs, dtype=float)
@@ -129,7 +143,12 @@ class IsaacSimGo2MultiEnv(gym.Env):
             "num_envs": self.num_envs,
             "control_mode": "relative" if self.use_relative_control else "absolute",
             "episode_steps": self.episode_steps.copy(),
-            "episode_rewards": self.episode_rewards.copy()
+            "episode_rewards": self.episode_rewards.copy(),
+            "_episode": np.zeros(self.num_envs, dtype=bool),
+            "episode": {
+                'r': np.zeros(self.num_envs, dtype=float),
+                'l': np.zeros(self.num_envs, dtype=int)
+            }
         }
         
         return observations, info
@@ -196,15 +215,27 @@ class IsaacSimGo2MultiEnv(gym.Env):
         self.episode_steps += 1
         self.episode_rewards += rewards
 
+        # Track completed episodes for this step
+        episode_flags = np.zeros(self.num_envs, dtype=bool)
+        episode_rewards = np.zeros(self.num_envs, dtype=float)
+        episode_lengths = np.zeros(self.num_envs, dtype=int)
+
         # Reset automático de ambientes que terminaram
         for env_id in range(self.num_envs):
             if terminated[env_id]:
                 logger.info(f"Environment {env_id} terminated at step {self.episode_steps[env_id]} with reward {self.episode_rewards[env_id]:.3f}")
+                
+                # Record completed episode data
+                episode_flags[env_id] = True
+                episode_rewards[env_id] = self.episode_rewards[env_id]
+                episode_lengths[env_id] = self.episode_steps[env_id]
+                
+                # Reset environment
                 self.multi_helper.reset_environment(env_id)
                 self.episode_steps[env_id] = 0
                 self.episode_rewards[env_id] = 0.0
 
-        # Informações adicionais
+        # Prepare info dict in standard Gymnasium SyncVectorEnv format
         info = {
             "episode_steps": self.episode_steps.copy(),
             "episode_rewards": self.episode_rewards.copy(),
@@ -212,6 +243,17 @@ class IsaacSimGo2MultiEnv(gym.Env):
             "num_terminated": np.sum(terminated),
             "termination_reasons": self._get_termination_reasons()
         }
+        
+        # Add standard episode information (always present, even if empty)
+        info["_episode"] = episode_flags
+        info["episode"] = {
+            'r': episode_rewards,
+            'l': episode_lengths
+        }
+        
+        # if np.any(episode_flags):
+        #     completed_envs = np.where(episode_flags)[0]
+        #     logger.debug(f"Completed episodes in environments {completed_envs}: rewards = {episode_rewards[completed_envs]}, lengths = {episode_lengths[completed_envs]}")
 
         return observations, rewards, terminated, truncated, info
 
