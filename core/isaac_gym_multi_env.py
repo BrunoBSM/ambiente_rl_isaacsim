@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import logging
-
+import os
 from core.multi_sim_helper import MultiSimHelper
 
 # Configure logging
@@ -39,7 +39,8 @@ class IsaacSimGo2MultiEnv(gym.Env):
     """
 
     def __init__(self, num_envs: int = 4, spacing: float = 3.0, safety_margin: float = 0.1, 
-                 use_relative_control: bool = False, relative_scale: float = 0.1):
+                 use_relative_control: bool = False, relative_scale: float = 0.1,
+                 action_interval: float = 1/60):
         """
         Inicializa o ambiente Gymnasium para múltiplos robôs GO2.
         
@@ -49,6 +50,7 @@ class IsaacSimGo2MultiEnv(gym.Env):
             safety_margin (float): Margem de segurança para os limites das juntas (0.1 = 10%)
             use_relative_control (bool): Se True, usa controle relativo ao invés de absoluto
             relative_scale (float): Escala para o controle relativo (menor = mais suave)
+            action_interval (float): Intervalo de tempo entre ações em segundos (padrão: 1/60 = 16.67ms)
         """
         super().__init__()
 
@@ -56,18 +58,22 @@ class IsaacSimGo2MultiEnv(gym.Env):
         self.num_envs = num_envs
         self.use_relative_control = use_relative_control
         self.relative_scale = relative_scale
+        self.action_interval = action_interval
+        
+        self.should_render = os.getenv("ISAAC_MODE", "headless").lower() in ("display", "webrtc")
 
         # Instancia o helper multi-robô
         self.multi_helper = MultiSimHelper(
             num_envs=num_envs,
             spacing=spacing,
-            safety_margin=safety_margin
+            safety_margin=safety_margin,
+            action_interval=action_interval
         )
 
         # --- Espaços de ação e observação ---
         self.n_joints = 12  # GO2 tem 12 juntas controláveis
         # Observação baseada no formato do isaac_gym_env.py original
-        self.obs_dim = self.n_joints * 2 + 3 + 6  # joints pos + joints vel + base pos + base vel
+        self.obs_dim = self.n_joints * 2 + 6  # joints pos + joints vel + base vel
 
         # Ações para todos os robôs: shape (num_envs, n_joints)
         # Sempre normalizadas entre -1 e 1 para segurança
@@ -203,7 +209,7 @@ class IsaacSimGo2MultiEnv(gym.Env):
             self.multi_helper.apply_actions(actions)
         
         # Avança a simulação
-        self.multi_helper.step_simulation(render=True)
+        self.multi_helper.step_simulation(render=self.should_render)
 
         # Coleta observações, recompensas e terminações
         observations = self._get_observations_array()
@@ -271,18 +277,22 @@ class IsaacSimGo2MultiEnv(gym.Env):
             
             # Coleta dados básicos (formato compatível com SimHelper original)
             joint_states = observer.get_joint_states()
-            position, _ = observer.get_robot_pose()
+            # position, _ = observer.get_robot_pose()
             lin_vel, ang_vel = observer.get_robot_velocities()
             
             # Concatena no mesmo formato do isaac_gym_env.py original
             obs = np.concatenate([
                 joint_states['positions'],  # n_joints
                 joint_states['velocities'], # n_joints  
-                position,                   # 3 (x, y, z)
+                # position,                   # 3 (x, y, z)
                 np.concatenate([lin_vel, ang_vel])  # 6 (lin_vel + ang_vel)
             ])
-            
+            # Efficiently check for any NaNs in obs and report back the env_id
+            # if np.isnan(obs).any():
+            #     logger.warning(f"[NaN DETECTED] NaN found in observation for env_id={env_id}")
+            #     logger.warning(f"Observation: {obs}")
             observations.append(obs)
+            
         
         return np.array(observations, dtype=np.float32)
 

@@ -616,7 +616,8 @@ class MultiSimHelper:
     for reinforcement learning with multiple parallel environments.
     """
     
-    def __init__(self, num_envs: int = 4, spacing: float = 2.0, safety_margin: float = 0.1):
+    def __init__(self, num_envs: int = 4, spacing: float = 2.0, safety_margin: float = 0.1, 
+                 action_interval: float = 1/60):
         """
         Initialize the multi-robot simulation helper.
         
@@ -624,15 +625,28 @@ class MultiSimHelper:
             num_envs: Number of robot environments to create
             spacing: Distance between robot environments in meters
             safety_margin: Safety margin for joint limits (0.1 = 10%)
+            action_interval: Interval between actions in seconds (default: 1/60 = 16.67ms)
         """
         self.num_envs = num_envs
         self.spacing = spacing
         self.safety_margin = safety_margin
-        
-        # Initialize world
-        self.world = World(stage_units_in_meters=1.0)
+        self.action_interval = action_interval
+    
+        # Initialize world with custom physics step size
+        self.world = World(
+            stage_units_in_meters=1.0,
+        )
         self.world.scene.add_default_ground_plane()
+
+        # self.world.set_gpu_dynamics_enabled(True)
+        # Print all attributes and functions of self.world
+        # print("[DEBUG] Attributes and methods of self.world:")
+        # for attr in dir(self.world):
+        #     print(attr)
         
+        self.steps_per_action = round(action_interval/self.world.get_physics_dt())
+        print(f"[INFO] Physics dt: {self.world.get_physics_dt()}")
+        print(f"[INFO] Will step {round(action_interval/self.world.get_physics_dt())} times per action (approximated) ")
         # Add lighting
         self.stage = omni.usd.get_context().get_stage()
         UsdLux.DistantLight.Define(self.stage, Sdf.Path("/DistantLight")).CreateIntensityAttr(300)
@@ -644,6 +658,7 @@ class MultiSimHelper:
 
         # Initialize simulation - IMPORTANTE: fazer antes de criar observers
         self.world.reset()
+        # Print all attributes and functions of self.world
 
         print("[INFO] World reset")
         
@@ -956,7 +971,7 @@ class MultiSimHelper:
             
             positions[env_id] = new_position
             
-            print(f"[INFO] Reset robot {env_id} to grid position ({new_position[0]:.2f}, {new_position[1]:.2f}, {new_position[2]:.2f})")
+            # print(f"[INFO] Reset robot {env_id} to grid position ({new_position[0]:.2f}, {new_position[1]:.2f}, {new_position[2]:.2f})")
         else:
             # Fallback to origin if initial positions not available
             print(f"[WARNING] No initial position for robot {env_id}, using origin")
@@ -991,7 +1006,8 @@ class MultiSimHelper:
         Args:
             render: Whether to render the simulation
         """
-        self.world.step(render=render)
+        for _ in range(self.steps_per_action):
+            self.world.step(render=render)
 
     def log_environment_states(self, step: int, detailed: bool = False):
         """

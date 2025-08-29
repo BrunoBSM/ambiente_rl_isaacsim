@@ -1,6 +1,7 @@
 
 import os
 import sys
+import time
 import yaml
 import argparse
 from pathlib import Path
@@ -20,22 +21,48 @@ parser.add_argument(
     nargs="*",
     help="Override config values (format: key=value)"
 )
-parser.add_argument(
-    "--webrtc", 
+# Add mutually exclusive group for display, webrtc, and headless modes
+mode_group = parser.add_mutually_exclusive_group()
+mode_group.add_argument(
+    "--display",
+    action="store_true",
+    help="Enable display mode (GUI window for local visualization)"
+)
+mode_group.add_argument(
+    "--webrtc",
     action="store_true",
     help="Enable WebRTC streaming for remote visualization"
 )
+mode_group.add_argument(
+    "--headless",
+    action="store_true",
+    help="Enable headless mode (no display, no streaming)"
+)
 
-# Parse only the webrtc argument first (don't exit on missing required args)
+# Parse only the mode arguments first (don't exit on missing required args)
 args, unknown = parser.parse_known_args()
 
-# Set environment variable based on webrtc argument
-if args.webrtc:
-    os.environ["ISAAC_WEBRTC"] = "1"
-    print("[INFO] WebRTC enabled")
-else:
-    os.environ["ISAAC_WEBRTC"] = "0"
-    print("[INFO] WebRTC disabled")
+# Determine which mode is set
+mode_count = sum([args.display, args.webrtc, args.headless])
+
+if mode_count > 1:
+    print("[ERROR] Only one of --display, --webrtc, or --headless can be set at a time.")
+    sys.exit(1)
+elif mode_count == 0:
+    print("[WARNING] No mode specified. Defaulting to headless mode.")
+    args.headless = True
+    time.sleep(5)
+
+# Set environment variable based on selected mode
+if args.display:
+    os.environ["ISAAC_MODE"] = "display"
+    print("[INFO] Display mode enabled (GUI window)")
+elif args.webrtc:
+    os.environ["ISAAC_MODE"] = "webrtc"
+    print("[INFO] WebRTC enabled (remote streaming)")
+elif args.headless:
+    os.environ["ISAAC_MODE"] = "headless"
+    print("[INFO] Headless mode enabled (no display, no streaming)")
 
 # Now import PPO (after environment variable is set)
 # This is due t an isaac sim need to create SimulatedApp before importing ther isaacsim modules

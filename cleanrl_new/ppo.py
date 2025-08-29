@@ -4,6 +4,7 @@ import random
 import time
 import json
 from dataclasses import dataclass
+from tqdm import tqdm
 
 import gymnasium as gym
 import numpy as np
@@ -206,7 +207,9 @@ def main(args: Args):
     next_done = torch.zeros(args.num_envs).to(device)
     global_ep_counter = 0
 
-    for iteration in range(1, args.num_iterations + 1):
+    # Create tqdm progress bar for iterations
+    pbar = tqdm(range(1, args.num_iterations + 1), desc="PPO Iterations", dynamic_ncols=True)
+    for iteration in pbar:
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (iteration - 1.0) / args.num_iterations
@@ -344,7 +347,7 @@ def main(args: Args):
 
         # Calculate SPS (Steps Per Second)
         sps = int(global_step / (time.time() - start_time))
-        print("SPS:", sps)
+        pbar.set_postfix({"SPS": sps})
 
         # Create metrics dictionary for wandb logging
         if args.track:

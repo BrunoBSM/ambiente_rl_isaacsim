@@ -13,7 +13,7 @@ Note:
     - O parâmetro "headless": False permite visualização da simulação
     - Este módulo deve ser importado ANTES de qualquer outro módulo do Isaac Sim
     - A instância simulation_app é compartilhada globalmente para controle da simulação
-    - WebRTC pode ser habilitado via variável de ambiente ISAAC_WEBRTC=1
+    - WebRTC pode ser habilitado via variável de ambiente ISAAC_MODE=webrtc
 
 Warning:
     Não modifique a ordem de importação. O SimulationApp deve ser inicializado
@@ -33,17 +33,12 @@ logging.basicConfig(
 from isaacsim import SimulationApp
 
 # Configurações opcionais - lidas de variáveis de ambiente
-ENABLE_WEBRTC = os.getenv("ISAAC_WEBRTC", "0").lower() in ("1", "true", "yes")
+ISAAC_MODE = os.getenv("ISAAC_MODE", "headless").lower()
 ENABLE_MOUSE_DRAW = True  # Mude para False se não quiser desenhar o mouse
-
-# Log da configuração WebRTC
-if ENABLE_WEBRTC:
-    logging.info("WebRTC será habilitado (ISAAC_WEBRTC=1)")
-else:
-    logging.info("WebRTC desabilitado (ISAAC_WEBRTC=0 ou não definido)")
-
+    
 # Configuração do Isaac Sim
-if ENABLE_WEBRTC:
+if ISAAC_MODE == "webrtc":
+    logging.info("WebRTC será habilitado (ISAAC_MODE=webrtc)")
     CONFIG = {
         "width": 1280,
         "height": 720,
@@ -65,7 +60,7 @@ if ENABLE_WEBRTC:
     if ENABLE_MOUSE_DRAW:
         simulation_app.set_setting("/app/window/drawMouse", True)
         logging.info("Mouse drawing habilitado")
-else:
+elif ISAAC_MODE == "display":
     # Configuração simples quando WebRTC está desabilitado
     simulation_app = SimulationApp({
         "headless": False,
@@ -76,3 +71,13 @@ else:
         "renderer": "RaytracedLighting"
     })
     logging.info("Simulação iniciada com configuração visual (janela visível)")
+else:
+    simulation_app = SimulationApp({
+        "headless": True,
+        "width": 1280,
+        "height": 720,
+        "window_width": 1280,
+        "window_height": 720,
+        "renderer": "RaytracedLighting"
+    })
+    logging.info("Simulação iniciada em modo headless")
